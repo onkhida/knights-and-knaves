@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knight & Knaves Logic Solver</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#667eea',
+                        'primary-dark': '#764ba2',
+                        'success': '#00b894',
+                        'success-dark': '#00a085'
+                    },
+                    animation: {
+                        'slide-in': 'slideIn 0.3s ease-out'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom radio button styling */
+        .radio-custom {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .radio-custom:checked {
+            background: #667eea;
+            border-color: #667eea;
+            box-shadow: inset 0 0 0 3px white;
+        }
+
+        .character-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+
+        /* Custom background styling */
+        .mythical-background {
+            background-image: url("{{ url_for('static', filename='application_background.jpg') if url_for else '/static/application_background.jpg' }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-5 mythical-background">
+    <div class="max-w-4xl mx-auto bg-white/95 backdrop-blur-sm border-2 border-gray-300 p-10 shadow-2xl">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-800 mb-3">Knight & Knaves Logic Solver</h1>
+            <p class="text-lg text-gray-600">Automated consistency checker for propositional logic puzzles</p>
+        </div>
+
+        <form id="solver-form" method="POST" action="{{ url_for('solve') if url_for else '#' }}">
+            <!-- Hidden fields to capture character identities -->
+            <input type="hidden" id="identity-a-hidden" name="identity_a" value="knight">
+            <input type="hidden" id="identity-b-hidden" name="identity_b" value="knave">
+            <!-- Character Identity Section -->
+            <div class="mb-10">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Character Identities</h2>
+                <div class="grid md:grid-cols-2 gap-5">
+                    <div id="character-a"
+                        class="character-card bg-gray-50 border-2 border-gray-400 p-6 text-center cursor-pointer transition-all duration-300 hover:shadow-lg"
+                        onclick="toggleIdentity('A')" data-identity="knight">
+                        <img id="image-a"
+                            src="{{ url_for('static', filename='knight.png') if url_for else '/static/knight.png' }}"
+                            alt="Knight" class="character-image mx-auto mb-4" />
+                        <div class="text-xl font-semibold text-gray-800 mb-2">Person A</div>
+                        <div id="identity-a" class="text-lg font-medium text-blue-600">Knight</div>
+                        <p class="text-sm text-gray-500 mt-2">Click to toggle identity</p>
+                    </div>
+                    <div id="character-b"
+                        class="character-card bg-gray-50 border-2 border-gray-400 p-6 text-center cursor-pointer transition-all duration-300 hover:shadow-lg"
+                        onclick="toggleIdentity('B')" data-identity="knave">
+                        <img id="image-b"
+                            src="{{ url_for('static', filename='knave.png') if url_for else '/static/knave.png' }}"
+                            alt="Knave" class="character-image mx-auto mb-4" />
+                        <div class="text-xl font-semibold text-gray-800 mb-2">Person B</div>
+                        <div id="identity-b" class="text-lg font-medium text-red-600">Knave</div>
+                        <p class="text-sm text-gray-500 mt-2">Click to toggle identity</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Propositions Display -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Propositions</h3>
+                <div class="bg-gray-50 border-2 border-gray-300 p-4">
+                    <div class="font-mono text-lg">
+                        <div id="prop-a" class="mb-2"><strong>p:</strong> A is a <span
+                                id="prop-identity-a">knight</span></div>
+                        <div id="prop-b"><strong>q:</strong> B is a <span id="prop-identity-b">knave</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Speaker Selection Section -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Who is Speaking?</h2>
+                <div class="grid md:grid-cols-2 gap-5">
+                    <div class="speaker-card bg-gray-50 border-2 border-transparent p-6 text-center cursor-pointer transition-all duration-300 hover:shadow-lg"
+                        onclick="selectSpeaker('A')">
+                        <div class="text-3xl mb-3">👤</div>
+                        <div class="text-xl font-semibold text-gray-800 mb-4">Person A</div>
+                        <div class="flex items-center justify-center gap-2">
+                            <input type="radio" id="speaker-a" name="speaker" value="A" class="radio-custom" checked>
+                            <label for="speaker-a" class="text-gray-600 cursor-pointer">Select this speaker</label>
+                        </div>
+                    </div>
+                    <div class="speaker-card bg-gray-50 border-2 border-transparent p-6 text-center cursor-pointer transition-all duration-300 hover:shadow-lg"
+                        onclick="selectSpeaker('B')">
+                        <div class="text-3xl mb-3">👤</div>
+                        <div class="text-xl font-semibold text-gray-800 mb-4">Person B</div>
+                        <div class="flex items-center justify-center gap-2">
+                            <input type="radio" id="speaker-b" name="speaker" value="B" class="radio-custom">
+                            <label for="speaker-b" class="text-gray-600 cursor-pointer">Select this speaker</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="text-blue-800"><strong>Tip:</strong> Use <code class="bg-blue-100 px-1">p</code> for Person A
+                    and <code class="bg-blue-100 px-1">q</code> for Person B. Combine with logic operators to create
+                    statements.</p>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Enter Statement</h3>
+                <textarea id="statement" name="statement" readonly
+                    class="w-full p-4 border-2 border-gray-300 text-lg font-mono transition-colors duration-300 bg-gray-50 focus:outline-none focus:border-primary focus:bg-white resize-none cursor-pointer"
+                    placeholder="Use the buttons below to build your logical statement"
+                    rows="3">{{ statement if statement else '' }}</textarea>
+                <div id="live-english" class="mt-2 text-sm text-gray-600 italic min-h-[1.25rem]"></div>
+            </div>
+
+            <div class="my-5">
+                <h4 class="text-gray-800 mb-4 font-semibold uppercase tracking-wider">Logic Symbols</h4>
+                <div class="grid grid-cols-4 md:grid-cols-7 gap-3">
+                    <button type="button"
+                        class="bg-gray-50 border-2 border-gray-300 p-3 font-mono text-xl font-bold text-gray-800 cursor-pointer transition-all duration-200 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5"
+                        onclick="insertSymbol('p')" title="Person A">p</button>
+                    <button type="button"
+                        class="bg-gray-50 border-2 border-gray-300 p-3 font-mono text-xl font-bold text-gray-800 cursor-pointer transition-all duration-200 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5"
+                        onclick="insertSymbol('q')" title="Person B">q</button>
+                    <button type="button"
+                        class="bg-gray-50 border-2 border-gray-300 p-3 font-mono text-xl font-bold text-gray-800 cursor-pointer transition-all duration-200 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5"
+                        onclick="insertSymbol('¬')" title="NOT">¬</button>
+                    <button type="button"
+                        class="bg-gray-50 border-2 border-gray-300 p-3 font-mono text-xl font-bold text-gray-800 cursor-pointer transition-all duration-200 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5"
+                        onclick="insertSymbol('∧')" title="AND">∧</button>
+                    <button type="button"
+                        class="bg-gray-50 border-2 border-gray-300 p-3 font-mono text-xl font-bold text-gray-800 cursor-pointer transition-all duration-200 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5"
+                        onclick="insertSymbol('∨')" title="OR">∨</button>
+                    <button type="button"
+                        class="bg-gray-50 border-2 border-gray-300 p-3 font-mono text-xl font-bold text-gray-800 cursor-pointer transition-all duration-200 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5"
+                        onclick="insertSymbol('→')" title="IMPLIES">→</button>
+                    <button type="button"
+                        class="bg-gray-50 border-2 border-gray-300 p-3 font-mono text-xl font-bold text-gray-800 cursor-pointer transition-all duration-200 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5"
+                        onclick="insertSymbol('↔')" title="BICONDITIONAL">↔</button>
+
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
+                <button type="submit"
+                    class="md:col-span-2 bg-gradient-to-r from-success to-success-dark text-white py-4 px-8 text-lg font-semibold uppercase tracking-wide transition-all duration-300 hover:shadow-xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Solve Puzzle
+                </button>
+                <button type="button"
+                    class="bg-red-50 border-2 border-red-300 py-4 px-8 text-lg font-bold text-red-800 cursor-pointer transition-all duration-200 hover:bg-red-500 hover:text-white hover:border-red-500 hover:-translate-y-0.5"
+                    onclick="backspace()" title="Backspace">BKSP</button>
+                <button type="button"
+                    class="bg-gray-100 text-gray-600 border-2 border-gray-300 py-4 px-8 text-lg font-semibold uppercase tracking-wide transition-all duration-300 hover:bg-gray-200"
+                    onclick="clearForm()">
+                    Clear
+                </button>
+            </div>
+        </form>
+
+        {% if truth_table %}
+        <div id="results-section" class="mt-8 p-5 bg-gray-50 border-2 border-gray-200 animate-slide-in">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Truth Table Analysis</h3>
+
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200">
+                <p class="text-blue-800 font-mono"><strong>Statement:</strong> {{ statement }}
+                    <span id="english-translation" class="text-blue-600 font-normal">
+                        {% if statement %} ({{ english_meaning }}){% endif %}
+                    </span>
+                </p>
+                <p class="text-blue-800"><strong>Speaker:</strong> Person {{ speaker }}</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="border border-gray-300 px-4 py-2 text-left">A is a</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">B is a</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">p (A={{ identity_a if identity_a else
+                                'knight' }})</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">q (B={{ identity_b if identity_b else
+                                'knave' }})</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Statement Value</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Speaker Tells Truth?</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Consistent?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in truth_table %}
+                        <tr class="{% if row.consistent %}bg-green-100 border-green-400{% else %}bg-white{% endif %}">
+                            <td class="border border-gray-300 px-4 py-2 font-mono">{{ row.a_identity }}</td>
+                            <td class="border border-gray-300 px-4 py-2 font-mono">{{ row.b_identity }}</td>
+                            <td class="border border-gray-300 px-4 py-2 font-mono">{{ 'T' if row.p_value else 'F' }}
+                            </td>
+                            <td class="border border-gray-300 px-4 py-2 font-mono">{{ 'T' if row.q_value else 'F' }}
+                            </td>
+                            <td class="border border-gray-300 px-4 py-2 font-mono">{{ 'T' if row.statement_value else
+                                'F' }}</td>
+                            <td class="border border-gray-300 px-4 py-2 font-mono">{{ 'T' if row.speaker_truth else 'F'
+                                }}</td>
+                            <td class="border border-gray-300 px-4 py-2">
+                                {% if row.consistent %}
+                                <span class="text-green-700 font-bold">Consistent</span>
+                                {% else %}
+                                <span class="text-gray-500">Inconsistent</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if consistent_solutions %}
+            <div class="mt-4 p-4 bg-green-50 border border-green-200">
+                <h4 class="text-green-800 font-semibold mb-2">Consistent Solutions Found:</h4>
+                {% for solution in consistent_solutions %}
+                <p class="text-green-700 font-mono">• A is a {{ solution.a_identity }}, B is a {{ solution.b_identity }}
+                </p>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="mt-4 p-4 bg-red-50 border border-red-200">
+                <p class="text-red-700 font-semibold">No consistent solutions found</p>
+                <p class="text-red-600 text-sm">The statement creates a logical contradiction given the speaker's
+                    identity.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function translateToEnglish(statement, identityA, identityB) {
+            if (!statement) return '';
+
+            // Get the current identities for A and B from the form
+            const aIdentity = identityA || document.getElementById('identity-a-hidden').value;
+            const bIdentity = identityB || document.getElementById('identity-b-hidden').value;
+
+            function getPropositionText(propString, baseIdentity) {
+                const person = propString.includes('p') ? 'A' : 'B';
+                const identity = person === 'A' ? aIdentity : bIdentity;
+
+                // Count the number of negation symbols (¬)
+                const negationCount = (propString.match(/¬/g) || []).length;
+
+                // The statement is effectively negated if there's an odd number of negations
+                const isNegated = negationCount % 2 !== 0;
+
+                let baseText = `${person} is a ${identity}`;
+
+                if (isNegated) {
+                    // If negated, insert "NOT" after "is"
+                    // "A is a knight" becomes "A is NOT a knight"
+                    return baseText.replace(' is ', ' is NOT ');
+                } else {
+                    // If not negated (0, 2, 4... negations), return the original statement
+                    return baseText;
+                }
+            }
+
+            // Use a regular expression to find all propositions (any number of '¬' followed by 'p' or 'q')
+            // and replace each one with its proper English translation.
+            let translatedStatement = statement.replace(/¬*[pq]/g, (match) => {
+                return getPropositionText(match);
+            });
+
+            // Replace the logical operators with their English equivalents
+            const operatorReplacements = {
+                '∧': ' AND ',
+                '∨': ' OR ',
+                '→': ' IMPLIES ',
+                '↔': ' IF AND ONLY IF '
+            };
+
+            for (const operator in operatorReplacements) {
+                // Use a global regex to replace all occurrences of the operator
+                translatedStatement = translatedStatement.replace(new RegExp(operator, 'g'), operatorReplacements[operator]);
+            }
+
+            // Clean up spacing around parentheses for a cleaner look
+            translatedStatement = translatedStatement.replace(/\s*\(\s*/g, ' (').replace(/\s*\)\s*/g, ') ').trim();
+
+            return translatedStatement;
+        }
+
+        function toggleIdentity(person) {
+            const characterCard = document.getElementById(`character-${person.toLowerCase()}`);
+            const currentIdentity = characterCard.getAttribute('data-identity');
+            const identityDisplay = document.getElementById(`identity-${person.toLowerCase()}`);
+            const propIdentity = document.getElementById(`prop-identity-${person.toLowerCase()}`);
+            const image = document.getElementById(`image-${person.toLowerCase()}`);
+            const hiddenField = document.getElementById(`identity-${person.toLowerCase()}-hidden`);
+
+            if (currentIdentity === 'knight') {
+                // Change to knave
+                characterCard.setAttribute('data-identity', 'knave');
+                identityDisplay.textContent = 'Knave';
+                identityDisplay.className = 'text-lg font-medium text-red-600';
+                propIdentity.textContent = 'knave';
+                // Use knave.png from static folder
+                image.src = "{{ url_for('static', filename='knave.png') if url_for else '/static/knave.png' }}";
+                image.alt = "Knave";
+                hiddenField.value = 'knave';  // change the knight to a knave
+            } else {
+                // Change to knight
+                characterCard.setAttribute('data-identity', 'knight');
+                identityDisplay.textContent = 'Knight';
+                identityDisplay.className = 'text-lg font-medium text-blue-600';
+                propIdentity.textContent = 'knight';
+                // Use knight.png from static folder
+                image.src = "{{ url_for('static', filename='knight.png') if url_for else '/static/knight.png' }}";
+                image.alt = "Knight";
+                hiddenField.value = 'knight';  // change the knave to a knight
+            }
+        }
+
+        function selectSpeaker(person) {
+            // Remove all previous selections
+            document.querySelectorAll('.speaker-card').forEach(card => {
+                card.classList.remove('border-primary', 'bg-gradient-to-r', 'from-primary/10', 'to-primary-dark/10');
+                card.classList.add('border-transparent');
+            });
+
+            // Select the clicked speaker
+            const speakerCard = document.querySelector(`.speaker-card:nth-child(${person === 'A' ? '1' : '2'})`);
+            speakerCard.classList.remove('border-transparent');
+            speakerCard.classList.add('border-primary');
+
+            // Check the radio button
+            document.getElementById(`speaker-${person.toLowerCase()}`).checked = true;
+        }
+
+        function clearForm() {
+            // Clear the statement
+            document.getElementById('statement').value = '';
+
+            // Reset to Speaker A as default
+            document.getElementById('speaker-a').checked = true;
+            document.getElementById('speaker-b').checked = false;
+
+            // Remove all speaker selections
+            document.querySelectorAll('.speaker-card').forEach(card => {
+                card.classList.remove('border-primary');
+                card.classList.add('border-transparent');
+            });
+
+            // Set Speaker A as selected
+            document.querySelector('.speaker-card:first-child').classList.remove('border-transparent');
+            document.querySelector('.speaker-card:first-child').classList.add('border-primary');
+
+            // Reset identities to default
+            const characterCardA = document.getElementById('character-a');
+            const identityDisplayA = document.getElementById('identity-a');
+            const propIdentityA = document.getElementById('prop-identity-a');
+            const imageA = document.getElementById('image-a');
+
+            characterCardA.setAttribute('data-identity', 'knight');
+            identityDisplayA.textContent = 'Knight';
+            identityDisplayA.className = 'text-lg font-medium text-blue-600';
+            propIdentityA.textContent = 'knight';
+            imageA.src = "{{ url_for('static', filename='knight.png') if url_for else '/static/knight.png' }}";
+            imageA.alt = "Knight";
+            hiddenFieldA.value = 'knight';
+
+            const characterCardB = document.getElementById('character-b');
+            const identityDisplayB = document.getElementById('identity-b');
+            const propIdentityB = document.getElementById('prop-identity-b');
+            const imageB = document.getElementById('image-b');
+
+            characterCardB.setAttribute('data-identity', 'knave');
+            identityDisplayB.textContent = 'Knave';
+            identityDisplayB.className = 'text-lg font-medium text-red-600';
+            propIdentityB.textContent = 'knave';
+            imageB.src = "{{ url_for('static', filename='knave.png') if url_for else '/static/knave.png' }}";
+            imageB.alt = "Knave";
+            hiddenFieldB.value = 'knave';
+
+            // Hide results
+            const results = document.getElementById('results-section');
+            if (results) {
+                results.style.display = 'none';
+            }
+        }
+
+        // Make textarea readonly and add validation
+        function setupStatementInput() {
+            const textarea = document.getElementById('statement');
+            textarea.readOnly = true;
+            textarea.placeholder = "Use the buttons below to build your logical statement";
+            textarea.style.cursor = 'pointer';
+        }
+
+        function validateStatement(statement) {
+            // Check for adjacent variables (p,q)
+            if (/[pq]\s*[pq]/.test(statement)) {
+                return { valid: false, error: "Variables (p, q) cannot be adjacent to each other" };
+            }
+
+            // Check for adjacent operators
+            const operators = ['∧', '∨', '→', '↔'];
+            for (let i = 0; i < operators.length; i++) {
+                for (let j = 0; j < operators.length; j++) {
+                    const pattern = new RegExp(`\\${operators[i]}\\s*\\${operators[j]}`, 'g');
+                    if (pattern.test(statement)) {
+                        return { valid: false, error: "Operators cannot be adjacent to each other" };
+                    }
+                }
+            }
+
+            return { valid: true };
+        }
+
+        function insertSymbol(symbol) {
+            const textarea = document.getElementById('statement');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+
+            const newText = text.substring(0, start) + symbol + text.substring(end);
+
+            const validation = validateStatement(newText);
+            if (!validation.valid) {
+                showValidationError(validation.error);
+                return;
+            }
+
+            hideValidationError();
+
+            textarea.value = newText;
+            textarea.selectionStart = textarea.selectionEnd = start + symbol.length;
+            textarea.focus();
+
+            updateEnglishTranslation();
+        }
+
+        function backspace() {
+            const textarea = document.getElementById('statement');
+            const text = textarea.value;
+
+            textarea.value = text.slice(0, -1);
+
+            hideValidationError();
+            updateEnglishTranslation();
+            textarea.focus();
+        }
+
+        function showValidationError(message) {
+            let errorDiv = document.getElementById('validation-error');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.id = 'validation-error';
+                errorDiv.className = 'mt-2 p-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded';
+                document.getElementById('statement').parentNode.appendChild(errorDiv);
+            }
+            errorDiv.textContent = message;
+        }
+
+        function hideValidationError() {
+            const errorDiv = document.getElementById('validation-error');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+        }
+
+        function updateEnglishTranslation() {
+            const statement = document.getElementById('statement').value;
+            const englishDiv = document.getElementById('english-translation');
+            if (englishDiv && statement.trim()) {
+                const english = translateToEnglish(statement);
+                englishDiv.innerHTML = `<em> (${english})</em>`;
+            } else if (englishDiv) {
+                englishDiv.innerHTML = '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const checkedRadio = document.querySelector('input[name="speaker"]:checked');
+            if (checkedRadio) {
+                const person = checkedRadio.value;
+                selectSpeaker(person);
+            }
+        });
+
+        document.getElementById('solver-form').addEventListener('submit', function (e) {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+
+            submitBtn.textContent = 'Solving...';
+            submitBtn.disabled = true;
+
+            setTimeout(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }, 2000);
+        });
+
+        // submit logic + scroll to results
+        document.getElementById('solver-form').addEventListener('submit', function (e) {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+
+            submitBtn.textContent = 'Solving...';
+            submitBtn.disabled = true;
+
+            sessionStorage.setItem('shouldScrollToResults', 'true');
+
+            setTimeout(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }, 2000);
+        });
+
+        // scrolling after page load
+        document.addEventListener('DOMContentLoaded', function () {
+            setupStatementInput();
+
+            const checkedRadio = document.querySelector('input[name="speaker"]:checked');
+            if (checkedRadio) {
+                const person = checkedRadio.value;
+                selectSpeaker(person);
+            }
+
+            updateEnglishTranslation();
+
+            if (sessionStorage.getItem('shouldScrollToResults') === 'true') {
+                sessionStorage.removeItem('shouldScrollToResults'); // Clean up
+
+                // Wait a moment for the page to fully render, then scroll
+                setTimeout(() => {
+                    const resultsSection = document.getElementById('results-section');
+                    if (resultsSection) {
+                        resultsSection.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                        // Optional: Add a subtle highlight effect
+                        resultsSection.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.3)';
+                        setTimeout(() => {
+                            resultsSection.style.boxShadow = '';
+                        }, 2000);
+                    }
+                }, 100);
+            }
+        });
+    </script>
+</body>
+
+</html>
