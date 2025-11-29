@@ -79,45 +79,6 @@ class KnightsKnavesSolver:
         
         return truth_table, consistent_solutions
 
-    def solve_puzzle(self, statements):
-        results = []
-        
-        # Try all possible assignments for A and B
-        for a_is_knight in [True, False]:
-            for b_is_knight in [True, False]:
-                assignments = {'A': a_is_knight, 'B': b_is_knight}
-                is_consistent = True
-                
-                for stmt in statements:
-                    speaker = stmt['speaker']
-                    statement = stmt['statement']
-                    
-                    # Evaluate the statement
-                    statement_value = self.evaluate_statement(statement, assignments)
-                    
-                    # Check consistency: Knights tell truth, Knaves lie
-                    speaker_is_knight = assignments[speaker]
-                    
-                    if speaker_is_knight and not statement_value:
-                        # Knight said something false
-                        is_consistent = False
-                        break
-                    elif not speaker_is_knight and statement_value:
-                        # Knave said something true
-                        is_consistent = False
-                        break
-                
-                if is_consistent:
-                    return {
-                        'consistent': True,
-                        'solution': {
-                            'A': 'Knight' if a_is_knight else 'Knave',
-                            'B': 'Knight' if b_is_knight else 'Knave'
-                        }
-                    }
-        
-        return {'consistent': False, 'solution': None}
-
 @app.route('/', methods=['GET', 'POST'])
 def solve():
     if request.method == 'GET':
